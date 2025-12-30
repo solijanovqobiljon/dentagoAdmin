@@ -30,6 +30,8 @@ import Results from './components/Results';
 import ProfileContent from './components/ProfileContent';
 import AppPaymentsContent from './components/AppPaymentsContent';
 import TariffsContent from './components/TariffsContent';
+import Cards from './components/pages/BTS/cards';
+import Addproduct from './components/pages/addMahsulot';
 import Login from './components/Login';
 import { Link } from 'lucide-react';
 import Logo from "./assets/dentago.png"
@@ -113,6 +115,8 @@ const MainLayout = ({ isSidebarOpen, setIsSidebarOpen }) => {
           <Route path="/payments/tariffs" element={<TariffsContent />} />
           <Route path="/yetkazibberish" element={<Yetkazibberish />} />
           <Route path="/result" element={<Results />} />
+          <Route path="/cards" element={<Cards />} />
+          <Route path="/addproduct" element={<Addproduct/>} />
         </Routes>
       </main>
     </div>

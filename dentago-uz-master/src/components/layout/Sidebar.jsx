@@ -6,7 +6,7 @@ import {
     Archive, User, PlusCircle, ArrowLeft
 } from 'lucide-react';
 import { BsInstagram, BsTelegram } from 'react-icons/bs';
-import { MdEmail } from 'react-icons/md';
+import { FaYoutube } from "react-icons/fa";
 import { useData } from '../../context/DataProvider';
 import Logo from '../../assets/dentago.png';
 const Sidebar = ({ isSidebarOpen, setIsSidebarOpen }) => {
@@ -36,8 +36,14 @@ const Sidebar = ({ isSidebarOpen, setIsSidebarOpen }) => {
 
     const navItems = [
         { icon: Home, label: t('main'), route: "/", type: "link" },
-        { icon: User, label: t('my_results'), route: "/result", type: "link" },
+        // { icon: User, label: t('my_results'), route: "/result", type: "link" },  Natijalarim bo'limi olib tashlandi
         { icon: ListOrdered, label: t('orders_bts'), route: "/orders", type: "link" },
+        {
+            icon: PlusCircle,
+            label: "Mahsulot qo'shish",
+            route: "/addproduct",
+            type: "link"
+        },
         {
             icon: Archive,
             label: t('warehouse'),
@@ -90,6 +96,75 @@ const Sidebar = ({ isSidebarOpen, setIsSidebarOpen }) => {
         },
     ];
 
+    // Helper to render nav item (for DRYness)
+    const renderNavItem = (item, index) => {
+        const isActive = location.pathname === item.route || (item.type === "group" && location.pathname.startsWith(item.route));
+        if (item.type === "link") {
+            return (
+                <div key={index} className="space-y-1">
+                    <Link
+                        to={item.route}
+                        onClick={() => setIsSidebarOpen(false)}
+                        className={`
+                            flex items-center gap-4 px-5 py-3 rounded-[7px] transition-all duration-300
+                            ${isActive
+                                ? 'bg-[#00BCE4] text-white'
+                                : 'text-slate-400 font-bold hover:bg-[#00BCE4] hover:text-slate-50'}
+                        `}
+                    >
+                        <item.icon size={20} strokeWidth={isActive ? 2.5 : 2} />
+                        <span className="text-[11px] uppercase tracking-widest">{item.label}</span>
+                    </Link>
+                </div>
+            );
+        } else {
+            return (
+                <div key={index} className="space-y-1">
+                    <button
+                        onClick={() => handleMenuToggle(item.name)}
+                        className={`
+                            w-full flex items-center justify-between px-5 py-3 rounded-[7px] transition-all duration-300
+                            ${isActive
+                                ? 'bg-slate-50 text-[#00BCE4]'
+                                : 'text-slate-400 font-bold hover:bg-[#00BCE4] hover:text-slate-50'}
+                        `}
+                    >
+                        <div className="flex items-center gap-4">
+                            <item.icon size={20} strokeWidth={isActive ? 2.5 : 2} />
+                            <span className="text-[11px] uppercase tracking-widest">{item.label}</span>
+                        </div>
+                        <ChevronDown size={16} className={`transition-transform duration-300 ${openMenus[item.name] ? 'rotate-180' : ''}`} />
+                    </button>
+                    {/* Sub-menu Dropdown */}
+                    <div className={`
+                        overflow-hidden transition-all duration-500
+                        ${openMenus[item.name] ? 'max-h-125 opacity-100 mt-2' : 'max-h-0 opacity-0'}
+                    `}>
+                        <div className="pl-5 space-y-1">
+                            {item.subItems.map((sub, sIdx) => {
+                                const isSubActive = location.pathname === sub.route;
+                                return (
+                                    <Link
+                                        key={sIdx}
+                                        to={sub.route}
+                                        onClick={() => setIsSidebarOpen(false)}
+                                        className={`
+                                            block py-3 px-4 rounded-[7px] text-[10px] font-black uppercase tracking-tight transition-all
+                                            ${isSubActive
+                                                ? 'text-white bg-[#00BCE4]'
+                                                : 'text-slate-400 hover:text-[#00BCE4] hover:translate-x-1'}
+                                        `}
+                                    >
+                                        {sub.label}
+                                    </Link>
+                                );
+                            })}
+                        </div>
+                    </div>
+                </div>
+            );
+        }
+    };
     return (
         <>
             {/* Mobile Overlay */}
@@ -101,7 +176,7 @@ const Sidebar = ({ isSidebarOpen, setIsSidebarOpen }) => {
             )}
             <aside className={`
                 fixed top-0 left-0 h-full bg-blue-50 z-50
-                transition-all duration-500 ease-[cubic-bezier(0.4,0,0.2,1)]
+                transition-all duration-500 ease-in-out
                 w-72 flex flex-col justify-between border-r border-blue-50
                 ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}
                 md:translate-x-0 md:static md:h-screen
@@ -109,123 +184,63 @@ const Sidebar = ({ isSidebarOpen, setIsSidebarOpen }) => {
 
                 <div className="flex-1 flex flex-col relative min-h-0">
                     {/* Brand Identity */}
-                    <div className="p-8 pb-6 flex items-center justify-between">
-                        <Link to="/" className="flex items-center gap-3 group">
-                            <img className='h-[150px] mt-[-73px]' src={Logo} alt="" />
+                    <div className="p-8 pb-6 flex bg-white items-center justify-between">
+                        <Link to="/" className="flex items-center justify-center gap-3 group">
+                            <img className='h-37.5 -mt-18.25 mx-auto ml-[32px]' src={Logo} alt="" />
                         </Link>
                         <button onClick={() => setIsSidebarOpen(false)} className="md:hidden absolute top-4 left-2 p-2 text-slate-400">
                             <ArrowLeft size={20} />
                         </button>
                     </div>
 
-                    {/* Quick Action Button */}
-                    <div className="px-6 mb-8 mt-[-60px]">
-                        <a
-                            href="https://dentago.uz/dashboard"
-                            className="flex items-center justify-center gap-3 w-full h-14 bg-blue-50 text-[#00BCE4] rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-[#00BCE4] hover:text-white transition-all duration-300 shadow-sm"
-                        >
-                            <PlusCircle size={18} />
-                            Mahsulot qo'shish
-                        </a>
-                    </div>
 
                     {/* Navigation */}
-                    <nav className="flex-1 overflow-y-auto px-4 space-y-2 custom-scrollbar pb-10">
-                        {navItems.map((item, index) => {
-                            const isActive = location.pathname === item.route || (item.type === "group" && location.pathname.startsWith(item.route));
-
-                            return (
-                                <div key={index} className="space-y-1">
-                                    {item.type === "link" ? (
-                                        <Link
-                                            to={item.route}
-                                            onClick={() => setIsSidebarOpen(false)}
-                                            className={`
-                                                flex items-center gap-4 px-5 py-3 rounded-2xl transition-all duration-300
-                                                ${isActive
-                                                    ? 'bg-[#00BCE4] text-white'
-                                                    : 'text-slate-400 font-bold hover:bg-[#00BCE4] hover:text-slate-50'}
-                                            `}
-                                        >
-                                            <item.icon size={20} strokeWidth={isActive ? 2.5 : 2} />
-                                            <span className="text-[11px] uppercase tracking-widest">{item.label}</span>
-                                        </Link>
-                                    ) : (
-                                        <>
-                                            <button
-                                                onClick={() => handleMenuToggle(item.name)}
-                                                className={`
-                                                    w-full flex items-center justify-between px-5 py-3 rounded-2xl transition-all duration-300
-                                                    ${isActive
-                                                        ? 'bg-slate-50 text-[#00BCE4]'
-                                                        : 'text-slate-400 font-bold hover:bg-[#00BCE4] hover:text-slate-50'}
-                                                `}
+                        <nav className="flex-1 overflow-y-auto bg-white mt-[-65px] px-4 space-y-2 custom-scrollbar pb-10">
+                            {navItems.map((item, index) => {
+                                if (item.type === "external") {
+                                    return (
+                                        <div key={index} className="space-y-1">
+                                            <a
+                                                href={item.route}
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                className="flex items-center gap-4 px-5 py-3 rounded-[7px] transition-all duration-300 text-slate-400 font-bold hover:bg-[#00BCE4] hover:text-slate-50"
                                             >
-                                                <div className="flex items-center gap-4">
-                                                    <item.icon size={20} strokeWidth={isActive ? 2.5 : 2} />
-                                                    <span className="text-[11px] uppercase tracking-widest">{item.label}</span>
-                                                </div>
-                                                <ChevronDown size={16} className={`transition-transform duration-300 ${openMenus[item.name] ? 'rotate-180' : ''}`} />
-                                            </button>
-
-                                            {/* Sub-menu Dropdown */}
-                                            <div className={`
-                                                overflow-hidden transition-all duration-500
-                                                ${openMenus[item.name] ? 'max-h-[500px] opacity-100 mt-2' : 'max-h-0 opacity-0'}
-                                            `}>
-                                                <div className="pl-5 space-y-1">
-                                                    {item.subItems.map((sub, sIdx) => {
-                                                        const isSubActive = location.pathname === sub.route;
-                                                        return (
-                                                            <Link
-                                                                key={sIdx}
-                                                                to={sub.route}
-                                                                onClick={() => setIsSidebarOpen(false)}
-                                                                className={`
-                                                                    block py-3 px-4 rounded-xl text-[10px] font-black uppercase tracking-tight transition-all
-                                                                    ${isSubActive
-                                                                        ? 'text-white bg-[#00BCE4]'
-                                                                        : 'text-slate-400 hover:text-[#00BCE4] hover:translate-x-1'}
-                                                                `}
-                                                            >
-                                                                {sub.label}
-                                                            </Link>
-                                                        );
-                                                    })}
-                                                </div>
-                                            </div>
-                                        </>
-                                    )}
-                                </div>
-                            );
-                        })}
-                    </nav>
+                                                <item.icon size={20} />
+                                                <span className="text-[11px] uppercase tracking-widest">{item.label}</span>
+                                            </a>
+                                        </div>
+                                    );
+                                }
+                                return renderNavItem(item, index);
+                            })}
+                        </nav>
                 </div>
 
                 {/* Footer Section */}
-                <div className="p-6 bg-slate-50/50 border-t border-slate-50">
+                <div className="px-6 py-8 bg-white border-t border-gray-200">
                     <Link
                         to="/manual"
                         onClick={() => setIsSidebarOpen(false)}
                         className={`
-                            flex items-center gap-4 px-5 py-4 rounded-2xl mb-6 transition-all
+                            flex items-center gap-2 w-[105px] m-auto mb-[20px] py-1 justify-center mb-3.75 transition-all
                             ${location.pathname === '/manual'
-                                ? 'bg-[#00BCE4] text-white shadow-lg'
-                                : 'text-slate-500 font-bold hover:bg-white'}
+                                ? 'text-[#00BCE4] border-b-2'
+                                : 'text-slate-500 font-bold'}
                         `}
                     >
-                        <BookOpen size={20} />
+                        <BookOpen size={15} />
                         <span className="text-[11px] uppercase tracking-widest">{t('manual')}</span>
                     </Link>
 
                     {/* Social Connect */}
-                    <div className="flex justify-between items-center bg-white p-3 rounded-2xl shadow-sm border border-blue-50">
-                        <a href="https://t.me/Dentago_uz" className="p-2 text-slate-400 hover:text-[#00BCE4] transition-colors"><BsTelegram size={20} /></a>
-                        <a href="https://www.instagram.com/dentago__uz" className="p-2 text-slate-400 hover:text-pink-600 transition-colors"><BsInstagram size={20} /></a>
-                        <a href="mailto:ddentago@gmail.com" className="p-2 text-slate-400 hover:text-red-500 transition-colors"><MdEmail size={22} /></a>
+                    <div className="flex justify-center gap-4 mb-[10px] h-8 items-center">
+                        <a href="https://t.me/Dentago_uz" target="_blank" className="text-[#00BCE4] hover:scale-[1.1] transition-all"><BsTelegram size={20} /></a>
+                        <a href="https://www.instagram.com/dentago__uz" target="_blank" className="text-red-700 hover:scale-[1.1] transition-all"><BsInstagram size={20} /></a>
+                        <a href="mailto:ddentago@gmail.com" target="_blank" className=" text-red-500 hover:scale-[1.1] transition-all"><FaYoutube size={22} /></a>
                     </div>
 
-                    <p className="text-center mt-6 text-[10px] font-black text-slate-300 uppercase tracking-tighter">
+                    <p className="text-center mt-[25px] text-[10px] font-medium text-black uppercase tracking-tighter">
                         &copy; 2025 DentaGo Platform
                     </p>
                 </div>
