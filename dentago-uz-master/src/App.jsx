@@ -32,8 +32,8 @@ import AppPaymentsContent from './components/AppPaymentsContent';
 import TariffsContent from './components/TariffsContent';
 import Cards from './components/pages/BTS/cards';
 import Addproduct from './components/pages/addMahsulot';
+import MahsulotQoshish from './components/pages/BTS/MahsulotQAdd';
 import Login from './components/Login';
-import { Link } from 'lucide-react';
 import Logo from "./assets/dentago.png"
 const routeConfig = {
   "/hisobot/to'lovlar": "payments",
@@ -117,6 +117,7 @@ const MainLayout = ({ isSidebarOpen, setIsSidebarOpen }) => {
           <Route path="/result" element={<Results />} />
           <Route path="/cards" element={<Cards />} />
           <Route path="/addproduct" element={<Addproduct/>} />
+          <Route path="/MahsulotQoshish" element={<MahsulotQoshish/>} />
         </Routes>
       </main>
     </div>
