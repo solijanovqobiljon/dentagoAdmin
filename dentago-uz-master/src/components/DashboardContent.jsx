@@ -184,7 +184,6 @@ const DashboardContent = () => {
                                     className="p-4 rounded-2xl transition-all duration-300 group-hover:rotate-6" 
                                     style={{ backgroundColor: `${stat.color}15`, color: stat.color }}
                                 >
-                                    <stat.icon size={22} strokeWidth={2.5} />
                                 </div>
                                 <div>
                                     {loadingStats ? (

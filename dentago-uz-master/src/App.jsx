@@ -1,16 +1,15 @@
-import React, { useState, useEffect } from 'react';
-import { Routes, Route, useLocation } from 'react-router-dom';
+import React from 'react';
+import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { DataProvider, useData } from './context/DataProvider';
 
+// Layout
 import Sidebar from './components/layout/Sidebar';
 import Header from './components/layout/Header';
 
+// Pages
 import DashboardContent from './components/DashboardContent';
-import CalendarContent from './components/CalendarContent';
 import PaymentsContent from './components/PaymentsContent';
 import LeadStatisticsContent from './components/LeadStatisticsContent';
-import DoctorDailyReportsContent from './components/DoctorDailyReportsContent';
-import GiveMoneyToDoctorsContent from './components/GiveMoneyToDoctorsContent';
 import DailyExpensesContent from './components/DailyExpensesContent';
 import DailyExpenseCategoriesContent from './components/DailyExpenseCategoriesContent';
 import SmsTemplatesContent from './components/SmsTemplatesContent';
@@ -33,109 +32,127 @@ import TariffsContent from './components/TariffsContent';
 import Cards from './components/pages/BTS/cards';
 import Addproduct from './components/pages/addMahsulot';
 import MahsulotQoshish from './components/pages/BTS/MahsulotQAdd';
+
+// Auth
 import Login from './components/Login';
-import Logo from "./assets/dentago.png"
-const routeConfig = {
-  "/hisobot/to'lovlar": "payments",
-  '/hisobot/lead-statistika': "lead_statistics",
-  '/hisobot/kunilik-xarajatlar': "daily_expenses",
-  '/hisobot/kunilik-xarajatlar-kategoriyalari': "daily_expense_categories",
-  '/sms/shablonlar': "sms_templates",
-  '/sms/sozlamalar': "sms_settings",
-  '/manual': "manual",
-  '/storage/documents': "documents",
-  '/storage/products': "products",
-  '/storage/categories': "categories",
-  '/storage/brands': "brands",
-  '/storage/units': "units",
-  '/storage/suppliers': "suppliers",
-  '/storage': "warehouse",
-  '/pages/BTS/orders': "orders_bts",
-  '/orders': "orders_bts",
-  '/result': "my_results",
-  '/profile': "profile",
-  '/payments/app': "app_payments",
-  '/payments/tariffs': "tariffs",
-  '/courses': "courses_title",
-  '/storage/usage': "product_usage"
-};
+import Registration from './components/registration';
 
-const getPageTitle = (pathname) => {
-  if (pathname === '/') return "dashboard";
-  if (routeConfig[pathname]) return routeConfig[pathname];
+import Logo from "./assets/dentago.png";
 
-  const sortedKeys = Object.keys(routeConfig).sort((a, b) => b.length - a.length);
-  for (const key of sortedKeys) {
-    if (pathname.startsWith(key)) return routeConfig[key];
-  }
-  return "dashboard";
-};
+// 🔵 Telegram tugmasi
+const TelegramButton = () => (
+  <a
+    href="https://t.me/dentalsoft_uz"
+    target="_blank"
+    rel="noopener noreferrer"
+    className="fixed bottom-6 right-6 z-[9999] w-14 h-14 flex items-center justify-center bg-white border-2 border-[#00BCE4] rounded-full shadow-2xl hover:scale-110 transition-all"
+  >
+    <img src={Logo} alt="DentaGo" className="w-10 h-10 rounded" />
+  </a>
+);
 
-const MainLayout = ({ isSidebarOpen, setIsSidebarOpen }) => {
+// 🔐 Protected Layout (faqat autentifikatsiya qilinganlar uchun)
+const ProtectedLayout = () => {
+  const { isAuthenticated, theme } = useData();
   const location = useLocation();
-  const pageKey = getPageTitle(location.pathname);
-  const { theme, isAuthenticated, t } = useData();
 
-  useEffect(() => {
-    document.documentElement.classList.toggle('dark', theme === 'dark');
-  }, [theme]);
-
+  // Agar login qilinmagan bo'lsa — login sahifasiga yubor
   if (!isAuthenticated) {
-    return <Login />;
+    return <Navigate to="/login" replace />;
   }
 
+  const path = location.pathname;
+
+  const renderContent = () => {
+    if (path === '/' || path === '/dashboard') return <DashboardContent />;
+    if (path === "/hisobot/to'lovlar") return <PaymentsContent />;
+    if (path === '/hisobot/lead-statistika') return <LeadStatisticsContent />;
+    if (path === '/hisobot/kunilik-xarajatlar') return <DailyExpensesContent />;
+    if (path === '/hisobot/kunilik-xarajatlar-kategoriyalari') return <DailyExpenseCategoriesContent />;
+    if (path === '/sms/shablonlar') return <SmsTemplatesContent />;
+    if (path === '/sms/sozlamalar') return <SmsSettingsContent />;
+    if (path === '/settings/general') return <GeneralSettingsContent />;
+    if (path === '/manual') return <ManualContent />;
+    if (path === '/storage/documents') return <DocumentsContent />;
+    if (path === '/storage/products' || path === '/storage') return <ProductsContent />;
+    if (path === '/storage/categories') return <CategoriesContent />;
+    if (path === '/storage/brands') return <BrandsContent />;
+    if (path === '/storage/units') return <UnitsContent />;
+    if (path === '/storage/suppliers') return <SuppliersContent />;
+    if (path === '/storage/usage') return <ProductUsageContent />;
+    if (path === '/orders') return <OrderList />;
+    if (path === '/profile') return <ProfileContent />;
+    if (path === '/payments/app') return <AppPaymentsContent />;
+    if (path === '/payments/tariffs') return <TariffsContent />;
+    if (path === '/yetkazibberish') return <Yetkazibberish />;
+    if (path === '/result') return <Results />;
+    if (path === '/cards') return <Cards />;
+    if (path === '/addproduct') return <Addproduct />;
+    if (path === '/MahsulotQoshish') return <MahsulotQoshish />;
+
+    return <div className="text-center text-3xl mt-20 text-gray-500">404 — Sahifa topilmadi</div>;
+  };
 
   return (
-    <div className={`flex h-[100vh] ${theme === 'dark' ? 'bg-gray-900' : 'bg-gray-50'}`}>
-      <Sidebar isSidebarOpen={isSidebarOpen} setIsSidebarOpen={setIsSidebarOpen} />
-      <main className="flex-1 overflow-x-hidden">
-        <Header setIsSidebarOpen={setIsSidebarOpen} isSidebarOpen={isSidebarOpen} currentPage={t(pageKey)} />
-        <Routes>
-          <Route path="/" element={<DashboardContent />} />
-          <Route path="*" element={<div className="p-8 text-center text-xl font-bold">404 Sahifa topilmadi</div>} />
-          <Route path="/hisobot/to'lovlar" element={<PaymentsContent />} />
-          <Route path="/hisobot/lead-statistika" element={<LeadStatisticsContent />} />
-          <Route path="/hisobot/kunilik-xarajatlar" element={<DailyExpensesContent />} />
-          <Route path="/hisobot/kunilik-xarajatlar-kategoriyalari" element={<DailyExpenseCategoriesContent />} />
-          <Route path="/sms/shablonlar" element={<SmsTemplatesContent />} />
-          <Route path="/sms/sozlamalar" element={<SmsSettingsContent />} />
-          <Route path="/settings/general" element={<GeneralSettingsContent />} />
-          <Route path="/manual" element={<ManualContent />} />
-          <Route path="/storage/documents" element={<DocumentsContent />} />
-          <Route path="/storage/products" element={<ProductsContent />} />
-          <Route path="/storage/categories" element={<CategoriesContent />} />
-          <Route path="/storage/brands" element={<BrandsContent />} />
-          <Route path="/storage/units" element={<UnitsContent />} />
-          <Route path="/storage/suppliers" element={<SuppliersContent />} />
-          <Route path="/storage/usage" element={<ProductUsageContent />} />
-          <Route path="/storage" element={<ProductsContent />} />
-          <Route path="/orders" element={<OrderList />} />
-          <Route path="/profile" element={<ProfileContent />} />
-          <Route path="/payments/app" element={<AppPaymentsContent />} />
-          <Route path="/payments/tariffs" element={<TariffsContent />} />
-          <Route path="/yetkazibberish" element={<Yetkazibberish />} />
-          <Route path="/result" element={<Results />} />
-          <Route path="/cards" element={<Cards />} />
-          <Route path="/addproduct" element={<Addproduct/>} />
-          <Route path="/MahsulotQoshish" element={<MahsulotQoshish/>} />
-        </Routes>
-      </main>
-    </div>
+    <>
+      <div className={`flex h-screen overflow-hidden ${theme === 'dark' ? 'bg-gray-900' : 'bg-gray-50'}`}>
+        <Sidebar />
+        <main className="flex-1 overflow-y-auto">
+          <Header />
+          <div className="p-4 md:p-6 lg:p-8">
+            {renderContent()}
+          </div>
+        </main>
+      </div>
+      <TelegramButton />
+    </>
   );
 };
 
-function App() {
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+// 🔑 Auth sahifalari
+const LoginPage = () => (
+  <>
+    <Login />
+    <TelegramButton />
+  </>
+);
 
+const RegisterPage = () => (
+  <>
+    <Registration />
+    <TelegramButton />
+  </>
+);
+
+// 🏠 Bosh sahifa — smart redirect
+const HomeRedirect = () => {
+  const { isAuthenticated } = useData();
+
+  // Login bo'lgan bo'lsa → dashboard, aks holda → login
+  return isAuthenticated ? (
+    <Navigate to="/dashboard" replace />
+  ) : (
+    <Navigate to="/login" replace />
+  );
+};
+
+// 🚀 MAIN APP
+const App = () => {
   return (
     <DataProvider>
-      <MainLayout isSidebarOpen={isSidebarOpen} setIsSidebarOpen={setIsSidebarOpen} />
-      <a href="https://t.me/dentalsoft_uz" target="_blank" rel="noopener noreferrer" className="fixed bottom-5 right-5 z-50 w-14 h-14 flex items-center justify-center bg-white border border-[#00BCE4] rounded-full cursor-pointer shadow-lg">
-        {/* <Link className="text-white" size={24} /> */}
-        <img src={Logo} alt="" />
-      </a>
+      <Routes>
+        {/* Bosh sahifa — autentifikatsiyaga qarab yo'naltiradi */}
+        <Route path="/" element={<HomeRedirect />} />
+
+        {/* Auth sahifalari */}
+        <Route path="/login" element={<LoginPage />} />
+        <Route path="/register" element={<RegisterPage />} />
+
+        {/* Barcha himoyalangan routelar (sidebar + header bilan) */}
+        <Route path="/*" element={<ProtectedLayout />} />
+      </Routes>
     </DataProvider>
   );
-}
+};
 
 export default App;

@@ -90,7 +90,6 @@ const initialData = {
         suppliers: [
             { id: 101, firstName: "Ali", lastName: "Valiyev", phone1: "+998 90 123 45 67", phone2: "", status: true, company: 'Yetkazib beruvchi A' },
             { id: 102, firstName: "Bahodir", lastName: "Ahmadov", phone1: "+998 99 987 65 43", phone2: "+998 97 777 77 77", status: true, company: 'Dental World' },
-
             { id: 103, firstName: "Dilfuza", lastName: "Karimova", phone1: "+998 88 555 55 55", phone2: "", status: false, company: 'Global Pharma' },
         ],
     },
@@ -192,36 +191,29 @@ export const DataProvider = ({ children }) => {
     const [locale, setLocale] = useState(localStorage.getItem('app_locale') || 'uz');
     const [theme, setTheme] = useState(localStorage.getItem('app_theme') || 'light');
     const [isAuthenticated, setIsAuthenticated] = useState(false);
+    const [authLoaded, setAuthLoaded] = useState(false);  // Yangi loading holati
 
-
-    // Sahifa yuklanganda authenticated holatni tiklash
+    // Ilova ochilganda tokenlarni tekshirish
     useEffect(() => {
-        const saved = localStorage.getItem('isAuthenticated');
-        if (saved === 'true') {
+        const accessToken = localStorage.getItem('accessToken');
+        const savedPhone = localStorage.getItem('userPhone');
+
+        if (accessToken && savedPhone) {
             setIsAuthenticated(true);
         }
+        setAuthLoaded(true);  // Tekshiruv tugadi
     }, []);
 
     // Telefon bilan login
     const loginWithPhone = (phone) => {
-        localStorage.setItem('isAuthenticated', 'true');
         localStorage.setItem('userPhone', phone);
         setIsAuthenticated(true);
-        return true;
     };
 
-    // Eski login (agar kerak bo'lsa)
-    const login = (username, password) => {
-        if (username === 'admin' && password === '123') {
-            localStorage.setItem('isAuthenticated', 'true');
-            setIsAuthenticated(true);
-            return true;
-        }
-        return false;
-    };
-
+    // Logout — tozalash
     const logout = () => {
-        localStorage.removeItem('isAuthenticated');
+        localStorage.removeItem('accessToken');
+        localStorage.removeItem('refreshToken');
         localStorage.removeItem('userPhone');
         setIsAuthenticated(false);
     };
@@ -249,7 +241,8 @@ export const DataProvider = ({ children }) => {
                     parsed.user = initialData.user;
                 }
                 return parsed;
-            } catch {
+            } catch (e) {
+                console.error('Maʼlumotlar oʻqishda xato:', e);
                 return initialData;
             }
         }
@@ -260,13 +253,18 @@ export const DataProvider = ({ children }) => {
         localStorage.setItem('clinic_app_data', JSON.stringify(data));
     }, [data]);
 
-    // updateData funksiyasi (sizniki bilan bir xil, lekin ishlaydi)
+    // updateData funksiyasi
     const updateData = (type, item, action = 'ADD') => {
         setData(prev => {
-            // Oddiy update logikasi (kerak bo'lsa kengaytirasiz)
-            return prev;
+            // Bu yerda kerakli logikani yozasiz
+            return { ...prev };
         });
     };
+
+    // Auth yuklanmaguncha children ni render qilmaydi
+    if (!authLoaded) {
+        return <div className="flex h-screen items-center justify-center">Yuklanmoqda...</div>;
+    }
 
     return (
         <DataContext.Provider value={{
@@ -278,7 +276,6 @@ export const DataProvider = ({ children }) => {
             switchTheme,
             t,
             isAuthenticated,
-            login,
             loginWithPhone,
             logout
         }}>

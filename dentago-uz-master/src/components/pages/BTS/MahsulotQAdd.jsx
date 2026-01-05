@@ -1,10 +1,10 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
-import { ArrowLeft, Loader2, X, CheckCircle } from 'lucide-react';
+import { ArrowLeft, Loader2, X } from 'lucide-react';
 
 const BASE_URL = "https://app.dentago.uz";
-const TOKEN = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjY4YzNmMDdjNzIxZmZkMjg0MGY3ZjYwYSIsImxvZ2luIjoiKzk5ODg4MDgzNjU1NiIsInVzZXJuYW1lIjoiU3VubmF0aWxsbyIsInJvbGUiOiJ1c2VyIiwiaWF0IjoxNzY3MDEwMTg4LCJleHAiOjE3Njc2MTQ5ODgsImF1ZCI6InlvdXItYXBwLXVzZXJzLU42Z3V6IiwiaXNzIjoieW91ci1hcHAtbmFtZS0yaURBRnZ3NyJ9.fG7Ej9MywUT3UaoRKHiw7PIfHpYb0_hvFv1EFCYcuvs";
+const TOKEN = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjY5NWI1NDMzMzk1OTgyYWU1ZWE1ODA5MyIsImxvZ2luIjoiKzk5ODkzMjMwNDYzNyIsInVzZXJuYW1lIjoiUW9iaWxqb24gU29saWphbm92Iiwicm9sZSI6InVzZXIiLCJpYXQiOjE3Njc1OTQxMDIsImV4cCI6MTc2ODE5ODkwMiwiYXVkIjoieW91ci1hcHAtdXNlcnMtTjZndXoiLCJpc3MiOiJ5b3VyLWFwcC1uYW1lLTJpREFGdnc3In0.O7ALUV0zWqpWp2DobpT6ktn1ia8NZszBPf41b-hXGWE";
 
 function MahsulotQAdd() {
   const navigate = useNavigate();
@@ -67,49 +67,100 @@ function MahsulotQAdd() {
     });
   };
 
+  // Rasmlarni serverga yuklash funksiyasi - TO'G'RI FORMATDA
   const uploadImagesToServer = async (imageFiles) => {
     const uploadedFilenames = [];
     
     for (let i = 0; i < imageFiles.length; i++) {
       try {
+        const imageFile = imageFiles[i];
         const formDataImage = new FormData();
-        formDataImage.append('file', imageFiles[i]);
-        formDataImage.append('upload_preset', 'product_images');
         
-        let response;
-        try {
-          response = await axios.post(`${BASE_URL}/api/images`, formDataImage, {
-            headers: {
-              'Authorization': `Bearer ${TOKEN}`
-            }
-          });
-        } catch (err) {
-          try {
-            response = await axios.post(`${BASE_URL}/api/upload/image`, formDataImage, {
-              headers: {
-                'Authorization': `Bearer ${TOKEN}`
-              }
-            });
-          } catch (err2) {
-            response = await axios.post(`${BASE_URL}/api/images/upload`, formDataImage, {
-              headers: {
-                'Authorization': `Bearer ${TOKEN}`
-              }
-            });
-          }
-        }
+        // 1. Field nomini tekshirish - "image" yoki "file"
+        formDataImage.append('image', imageFile); // "image" deb nomlash
+        // Yoki:
+        // formDataImage.append('file', imageFile); // "file" deb nomlash
+        
+        console.log(`Rasm ${i + 1} yuklanmoqda...`, imageFile.name);
+        
+        // 2. To'g'ri Content-Type va o'lchamlar
+        const config = {
+          headers: {
+            'Authorization': `Bearer ${TOKEN}`,
+            'Content-Type': 'multipart/form-data',
+          },
+          // Fayl hajmini cheklash
+          maxContentLength: 10 * 1024 * 1024, // 10MB
+          maxBodyLength: 10 * 1024 * 1024, // 10MB
+        };
 
+        console.log('Headers:', config.headers);
+        
+        // 3. APIga POST so'rov yuborish
+        const response = await axios.post(`${BASE_URL}/api/upload/image`, formDataImage, config);
+
+        console.log(`Rasm ${i + 1} javobi:`, response.data);
+        
         if (response.data) {
-          const filename = response.data.filename || 
-                          response.data.url?.split('/').pop() || 
-                          response.data.imageUrl || 
-                          `image_${Date.now()}_${i}.jpg`;
+          let filename = '';
           
+          // Serverdan filename ni olish - HAR XIL FORMATLAR UCHUN
+          if (typeof response.data === 'string') {
+            // Agar javob to'g'ridan-to'g'ri string bo'lsa "1767597287002-0.jpg"
+            filename = response.data.trim();
+          } else if (response.data.filename) {
+            // Agar { filename: "1766487622478-892578808.jpg" } formatida bo'lsa
+            filename = response.data.filename.trim();
+          } else if (response.data.url) {
+            // Agar { url: "..." } formatida bo'lsa
+            filename = response.data.url.split('/').pop().trim();
+          } else if (response.data.imageUrl) {
+            // Agar { imageUrl: "..." } formatida bo'lsa
+            filename = response.data.imageUrl.split('/').pop().trim();
+          } else if (response.data.data?.filename) {
+            // Agar { data: { filename: "..." } } formatida bo'lsa
+            filename = response.data.data.filename.trim();
+          } else {
+            // Agar hech qaysi formatga to'g'ri kelmasa, timestamp formatida yaratish
+            const timestamp = Date.now();
+            const randomNum = Math.floor(Math.random() * 1000000000); // 9 xonali random son
+            const fileExtension = imageFile.name.split('.').pop() || 'jpg';
+            filename = `${timestamp}-${randomNum}.${fileExtension}`;
+          }
+          
+          console.log(`✅ Rasm ${i + 1} saqlandi:`, filename);
           uploadedFilenames.push(filename);
         }
         
       } catch (error) {
-        console.error(`Rasm ${i + 1} yuklanmadi:`, error.message);
+        console.error(`❌ Rasm ${i + 1} yuklanmadi:`, error);
+        
+        // Batafsil xatolik ma'lumotlari
+        if (error.response) {
+          console.error('Status:', error.response.status);
+          console.error('Data:', error.response.data);
+          console.error('Headers:', error.response.headers);
+          
+          let errorMsg = `Rasm ${i + 1} yuklanmadi: `;
+          if (error.response.status === 413) {
+            errorMsg += "Fayl hajmi juda katta (maksimal 5MB)";
+          } else if (error.response.status === 415) {
+            errorMsg += "Noto'g'ri fayl formati";
+          } else if (error.response.status === 400) {
+            errorMsg += error.response.data.message || "Noto'g'ri so'rov";
+          } else {
+            errorMsg += error.response.data?.message || error.response.statusText;
+          }
+          alert(errorMsg);
+        } else if (error.request) {
+          console.error('Request:', error.request);
+          alert(`Rasm ${i + 1} yuklanmadi: Serverga ulanib bo'lmadi`);
+        } else {
+          console.error('Error:', error.message);
+          alert(`Rasm ${i + 1} yuklanmadi: ${error.message}`);
+        }
+        
+        throw error; // Xatolikni yuqoriga otkazish
       }
     }
     
@@ -136,15 +187,26 @@ function MahsulotQAdd() {
     }
 
     setLoading(true);
-    let uploadedImageUrls = [];
+    let uploadedImageFilenames = [];
 
     try {
+      // 1. Rasmlarni yuklash
       if (images.length > 0) {
         setUploadingImages(true);
-        uploadedImageUrls = await uploadImagesToServer(images);
-        console.log("Yuklangan rasmlar:", uploadedImageUrls);
+        uploadedImageFilenames = await uploadImagesToServer(images);
+        console.log("Yuklangan rasm fayllari:", uploadedImageFilenames);
+        
+        // Filenamelarni tekshirish
+        if (uploadedImageFilenames.length > 0) {
+          console.log("Birinchi rasm format tekshiruvi:", {
+            expected: "timestamp-randomNumber.jpg",
+            actual: uploadedImageFilenames[0],
+            matchesPattern: /^\d+-\d+\.(jpg|jpeg|png|gif|webp)$/i.test(uploadedImageFilenames[0])
+          });
+        }
       }
 
+      // 2. Mahsulot yaratish uchun payload tayyorlash
       const payload = {
         name: formData.name.trim(),
         sku: formData.sku.trim(),
@@ -158,11 +220,13 @@ function MahsulotQAdd() {
         vat_percent: Number(formData.vat_percent) || 0,
         code: formData.code.trim(),
         package_code: formData.package_code.trim(),
-        imageUrl: uploadedImageUrls
+        // Rasm fayl nomlarini array sifatida yuborish
+        imageUrl: uploadedImageFilenames
       };
 
-      console.log("Yuborilayotgan ma'lumot:", payload);
+      console.log("Yuborilayotgan mahsulot ma'lumotlari:", JSON.stringify(payload, null, 2));
 
+      // 3. Mahsulotni APIga yuborish
       const response = await axios.post(`${BASE_URL}/api/product`, payload, {
         headers: {
           'Authorization': `Bearer ${TOKEN}`,
@@ -170,16 +234,18 @@ function MahsulotQAdd() {
         }
       });
 
-      console.log("Server javobi:", response.data);
+      console.log("Mahsulot yaratish javobi:", response.data);
 
+      // 4. Muvaffaqiyatli xabar
       const successMessage = `✅ Mahsulot muvaffaqiyatli qo'shildi!${
-        uploadedImageUrls.length > 0 
-          ? `\n${uploadedImageUrls.length} ta rasm yuklandi.` 
-          : ''
+        uploadedImageFilenames.length > 0 
+          ? `\n${uploadedImageFilenames.length} ta rasm yuklandi.` 
+          : '\nRasmsiz qo\'shildi.'
       }`;
       
       alert(successMessage);
 
+      // 5. Formani tozalash
       setFormData({
         name: '',
         price: '',
@@ -198,6 +264,7 @@ function MahsulotQAdd() {
       setImages([]);
       setPreviewImages([]);
       
+      // 6. Orqaga qaytish
       setTimeout(() => {
         navigate(-1);
       }, 2000);
@@ -205,24 +272,40 @@ function MahsulotQAdd() {
     } catch (error) {
       console.error("Xatolik tafsilotlari:", error);
       
-      let errorMessage = "Xatolik yuz berdi";
+      let errorMessage = "Mahsulot qo'shishda xatolik yuz berdi";
       
       if (error.response) {
-        console.error("Status:", error.response.status);
-        console.error("Data:", error.response.data);
+        console.error("Status code:", error.response.status);
+        console.error("Server javobi:", error.response.data);
+        console.error("Headers:", error.response.headers);
         
         if (error.response.status === 401) {
           errorMessage = "Kirish rad etildi. Token eskirgan yoki noto'g'ri.";
         } else if (error.response.status === 400) {
-          errorMessage = "Noto'g'ri so'rov. Ma'lumotlarni tekshiring.";
+          // Rasm format xatosini tekshirish
+          if (error.response.data?.message?.includes('imageUrl') || 
+              error.response.data?.errors?.imageUrl) {
+            errorMessage = "Rasm formatida xatolik. Server quyidagi formatda kutmoqda:\n" +
+                          "1766487622478-892578808.jpg (timestamp-9xonaliRandomSon.jpg)";
+          } else {
+            errorMessage = "Noto'g'ri so'rov. Ma'lumotlarni tekshiring:\n" + 
+                          (error.response.data?.errors ? 
+                            JSON.stringify(error.response.data.errors, null, 2) : 
+                            error.response.data?.message || JSON.stringify(error.response.data));
+          }
         } else if (error.response.status === 409) {
           errorMessage = "Bu kod yoki SKU bilan mahsulot allaqachon mavjud.";
+        } else if (error.response.status === 413) {
+          errorMessage = "Rasm hajmi juda katta. Kichikroq rasm yuklang (maksimal 5MB).";
+        } else if (error.response.status === 500) {
+          errorMessage = "Server xatosi. Iltimos, keyinroq urinib ko'ring.";
         } else {
           errorMessage = error.response.data?.message || 
                         error.response.data?.error || 
                         "Server xatosi";
         }
       } else if (error.request) {
+        console.error("Request:", error.request);
         errorMessage = "Serverga ulanib bo'lmadi. Internet aloqasini tekshiring.";
       } else {
         errorMessage = error.message || "Noma'lum xatolik";
@@ -248,11 +331,10 @@ function MahsulotQAdd() {
             <ArrowLeft size={20} /> Dashboard
           </button>
           <h1 className="text-2xl md:text-3xl font-bold text-gray-800">Yangi tovar qo'shish</h1>
-          <div className="w-32"></div> {/* Balans uchun */}
+          <div className="w-32"></div>
         </div>
 
         <form onSubmit={handleSubmit} className="p-6 md:p-10 space-y-8">
-          {/* Yuklash statusi */}
           {(loading || uploadingImages) && (
             <div className="p-4 bg-blue-50 rounded-lg flex items-center gap-3">
               <Loader2 className="animate-spin text-blue-600" />
@@ -318,7 +400,7 @@ function MahsulotQAdd() {
               <label className="block text-gray-700 font-medium mb-2">Rasmlar</label>
               <div className="flex items-center gap-4">
                 <label className="bg-blue-600 text-white px-6 py-3 rounded-lg cursor-pointer hover:bg-blue-700">
-                  Choose Files
+                  Fayllarni tanlash
                   <input
                     type="file"
                     multiple
@@ -327,10 +409,11 @@ function MahsulotQAdd() {
                     className="hidden"
                   />
                 </label>
-                <span className="text-gray-500">No file chosen</span>
+                <span className="text-gray-500">
+                  {images.length > 0 ? `${images.length} ta fayl tanlandi` : "Fayl tanlanmadi"}
+                </span>
               </div>
 
-              {/* Preview */}
               {previewImages.length > 0 && (
                 <div className="mt-4 flex flex-wrap gap-4">
                   {previewImages.map((src, i) => (
@@ -385,14 +468,14 @@ function MahsulotQAdd() {
                 <option>Jarrohlik</option>
                 <option>Dezinfeksiya va sterilizatsiya</option>
                 <option>Sarf materiallari</option>
-                <option>Polishing to‘plami</option>
+                <option>Polishing to'plami</option>
                 <option>Asboblar</option>
                 <option>Stomatologik stullar va stullar</option>
-                <option>Qo‘l asboblari va mikromotorlar</option>
+                <option>Qo'l asboblari va mikromotorlar</option>
                 <option>Burlar</option>
                 <option>Assimilatsiya qilish moslamalari</option>
                 <option>Rentgen, vizograf va mikroskopik uskunalar</option>
-                <option>Skalatorlar va qo‘shimchalar</option>
+                <option>Skalatorlar va qo'shimchalar</option>
                 <option>Fayllar</option>
                 <option>Elektromotorlar va apekslokatorlar</option>
                 <option>Sterilizatsiya uskunalar</option>
@@ -424,10 +507,8 @@ function MahsulotQAdd() {
               className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none appearance-none bg-white"
             >
               <option value="">Kodni tanlang</option>
-              {/* Backenddan kodlarni olish mumkin, hozircha placeholder */}
               <option>03004010003004001</option>
               <option>03004097001006002</option>
-              {/* ... qolgan kodlar */}
             </select>
           </div>
 
@@ -475,7 +556,7 @@ function MahsulotQAdd() {
               disabled={loading || uploadingImages}
               className="px-8 py-3 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 disabled:opacity-50 transition"
             >
-              Tovarni saqlash
+              {loading ? "Saqlanmoqda..." : "Tovarni saqlash"}
             </button>
           </div>
         </form>

@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { useData } from '../context/DataProvider';
 import { useNavigate } from 'react-router-dom';
@@ -17,11 +17,37 @@ const Login = () => {
     const [countdown, setCountdown] = useState(0);
     const [phoneNumber, setPhoneNumber] = useState('+998');
     const [isLoading, setIsLoading] = useState(false);
-    const [inputBorderState, setInputBorderState] = useState('default'); // 'default' | 'success' | 'error'
+    const [inputBorderState, setInputBorderState] = useState('default');
+    const [phoneNotRegistered, setPhoneNotRegistered] = useState(false);
 
     const inputsRef = useRef([]);
 
-    // Telefon raqamini formatlash
+    // Ro'yxatdan o'tgandan keyin avtomatik SMS bosqichiga o'tish
+    useEffect(() => {
+        const justRegistered = localStorage.getItem('justRegistered');
+        const savedPhone = localStorage.getItem('userPhone');
+
+        if (justRegistered === 'true' && savedPhone) {
+            let formattedPhone = savedPhone;
+            if (!formattedPhone.startsWith('+')) {
+                formattedPhone = '+' + formattedPhone;
+            }
+
+            // Telefon raqamini to'g'ri formatda ko'rsatish
+            const formatted = formatPhoneNumber(formattedPhone);
+            setPhoneNumber(formatted);
+
+            // Darhol SMS kod kiritish bosqichiga o'tish
+            setIsSmsStep(true);
+
+            // Belgini o'chirish (bir marta ishlatiladi)
+            localStorage.removeItem('justRegistered');
+
+            // Avtomatik SMS jo'natish
+            sendSmsCode();
+        }
+    }, []);
+
     const formatPhoneNumber = (value) => {
         let numbers = value.replace(/\D/g, '');
         if (!numbers.startsWith('998')) {
@@ -43,11 +69,11 @@ const Login = () => {
         setValue('phone', formatted.replace(/\D/g, ''));
     };
 
-    // SMS kod jo'natish
     const sendSmsCode = async () => {
         setIsLoading(true);
         setError('');
         setInputBorderState('default');
+        setPhoneNotRegistered(false);
 
         const cleanPhone = phoneNumber.replace(/\D/g, '');
         const fullPhone = `+${cleanPhone}`;
@@ -55,20 +81,18 @@ const Login = () => {
         try {
             const response = await fetch('https://app.dentago.uz/api/auth/app/login', {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    phone: fullPhone,
-                }),
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ phone: fullPhone }),
             });
 
             const data = await response.json();
 
             if (response.ok && data.success) {
+                // SMS muvaffaqiyatli jo'natildi
                 setCountdown(60);
                 setIsSmsStep(true);
 
+                // 60 soniya countdown
                 const timer = setInterval(() => {
                     setCountdown(prev => {
                         if (prev <= 1) {
@@ -79,17 +103,32 @@ const Login = () => {
                     });
                 }, 1000);
             } else {
-                setError(data.message || 'SMS jo\'natishda xato yuz berdi');
+                // Raqam topilmadi → ro'yxatdan o'tish
+                if (data.message && (
+                    data.message.toLowerCase().includes('not found') ||
+                    data.message.includes('mavjud emas') ||
+                    data.message.includes('роʻйхатдан ўтмаган') ||
+                    data.message.includes('user not found') ||
+                    data.message.includes('not registered')
+                )) {
+                    setPhoneNotRegistered(true);
+                    setError('Ushbu telefon raqami tizimda roʻyxatdan oʻtmagan.');
+                    localStorage.setItem('pendingRegisterPhone', fullPhone);
+                    setIsSmsStep(false);
+                } else {
+                    setError(data.message || 'SMS joʻnatishda xato yuz berdi');
+                    setIsSmsStep(false);
+                }
             }
         } catch (err) {
             setError('Internet aloqasi muammosi yoki server xatosi');
             console.error('SMS send error:', err);
+            setIsSmsStep(false);
+        } finally {
+            setIsLoading(false);
         }
-
-        setIsLoading(false);
     };
 
-    // SMS input o'zgarishi
     const handleSmsInputChange = (index, value) => {
         if (!/^\d?$/.test(value)) return;
 
@@ -97,7 +136,7 @@ const Login = () => {
         newCodeArr[index] = value;
         const newCode = newCodeArr.join('');
         setSmsCode(newCode);
-        setInputBorderState('default'); // Har safar o'zgartirganda reset
+        setInputBorderState('default');
 
         if (value && index < 5) {
             inputsRef.current[index + 1]?.focus();
@@ -108,37 +147,33 @@ const Login = () => {
         }
     };
 
-    // Orqaga qaytish
     const handleBackToPhone = () => {
         setIsSmsStep(false);
         setSmsCode('');
         setError('');
         setInputBorderState('default');
-        inputsRef.current.forEach(input => {
-            if (input) input.value = '';
-        });
+        setPhoneNotRegistered(false);
+        inputsRef.current.forEach(input => input && (input.value = ''));
     };
 
-
-    // Telefon form submit
     const onSubmit = async () => {
         setError('');
         const cleanPhone = phoneNumber.replace(/\D/g, '');
 
         if (cleanPhone.length < 12) {
-            setError('Iltimos, to\'liq telefon raqamini kiriting');
+            setError('Iltimos, toʻliq telefon raqamini kiriting');
             return;
         }
 
         await sendSmsCode();
     };
 
-    // SMS kodni tasdiqlash
     const handleSmsConfirm = async (code) => {
         if (code.length !== 6) return;
 
         setIsLoading(true);
         setError('');
+        setInputBorderState('default');
 
         const cleanPhone = phoneNumber.replace(/\D/g, '');
         const fullPhone = `+${cleanPhone}`;
@@ -146,56 +181,40 @@ const Login = () => {
         try {
             const response = await fetch('https://app.dentago.uz/api/auth/app/verify', {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    phone: fullPhone,
-                    otp: code,
-                }),
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ phone: fullPhone, otp: code }),
             });
 
             const data = await response.json();
 
             if (response.ok && data.success) {
-                // MUVAFFAQIYAT: Yashil border va kirish
                 setInputBorderState('success');
 
-                // Tokenlarni saqlash
                 localStorage.setItem('accessToken', data.tokens.accessToken);
                 localStorage.setItem('refreshToken', data.tokens.refreshToken);
                 localStorage.setItem('userPhone', fullPhone);
 
-                // Context'ga yozish
                 loginWithPhone(fullPhone);
 
-                // Biroz kutib, chiroyli effekt uchun keyin navigate
-                setTimeout(() => {
-                    navigate('/');
-                }, 800);
+                // Bosh sahifaga o'tish
+                setTimeout(() => navigate('/dashboard'), 800);
             } else {
-                // XATO: Qizil border
                 setInputBorderState('error');
-                setError(data.message || 'Kod noto\'g\'ri yoki muddati o\'tgan');
+                setError(data.message || 'Kod notoʻgʻri yoki muddati oʻtgan');
                 setSmsCode('');
-                inputsRef.current.forEach(input => {
-                    if (input) input.value = '';
-                });
+                inputsRef.current.forEach(input => input && (input.value = ''));
+                inputsRef.current[0]?.focus();
             }
         } catch (err) {
             setInputBorderState('error');
             setError('Tasdiqlashda xato yuz berdi');
-            console.error('Verify error:', err);
             setSmsCode('');
-            inputsRef.current.forEach(input => {
-                if (input) input.value = '';
-            });
+            inputsRef.current.forEach(input => input && (input.value = ''));
+        } finally {
+            setIsLoading(false);
         }
-
-        setIsLoading(false);
     };
 
-    // Input border rangini belgilash
     const getBorderClass = () => {
         if (inputBorderState === 'success') return 'border-green-500 bg-green-50';
         if (inputBorderState === 'error') return 'border-red-500 bg-red-50';
@@ -204,7 +223,6 @@ const Login = () => {
 
     return (
         <>
-            {/* Loading spinner */}
             {isLoading && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
                     <div className="relative">
@@ -216,9 +234,8 @@ const Login = () => {
                 </div>
             )}
 
-
             <div className="flex min-h-screen w-full overflow-hidden font-sans">
-                {/* Chap taraf - rasm (desktop) */}
+                {/* Chap taraf - rasm */}
                 <div className="hidden lg:block lg:w-3/5 relative overflow-hidden">
                     <div className="absolute inset-0">
                         <img
@@ -246,7 +263,7 @@ const Login = () => {
                     </div>
                 </div>
 
-                {/* O'ng taraf - login form */}
+                {/* O'ng taraf - form */}
                 <div className="w-full lg:w-2/5 flex items-center justify-center p-6 md:p-8 lg:p-12">
                     <div className="w-full max-w-md bg-white rounded-2xl p-8 md:p-10">
                         <div className="flex justify-center mb-8">
@@ -265,8 +282,6 @@ const Login = () => {
                             </p>
                         </div>
 
-
-                        {/* Telefon kiritish */}
                         {!isSmsStep ? (
                             <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
                                 <div className="space-y-2">
@@ -292,18 +307,27 @@ const Login = () => {
                                     </div>
                                 )}
 
-                                <button
-                                    type="submit"
-                                    disabled={phoneNumber.replace(/\D/g, '').length < 12 || isLoading}
-                                    className="w-full py-3.5 bg-[#00C1F3] text-white font-semibold rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
-                                >
-                                    {isLoading ? 'Yuborilmoqda...' : 'Tasdiqlash kodini olish'}
-                                </button>
+                                {!phoneNotRegistered && (
+                                    <button
+                                        type="submit"
+                                        disabled={phoneNumber.replace(/\D/g, '').length < 12 || isLoading}
+                                        className="w-full py-3.5 bg-[#00C1F3] text-white font-semibold rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
+                                    >
+                                        {isLoading ? 'Yuborilmoqda...' : 'Tasdiqlash kodini olish'}
+                                    </button>
+                                )}
+
+                                {phoneNotRegistered && (
+                                    <button
+                                        type="button"
+                                        onClick={() => navigate('/register')}
+                                        className="w-full py-3.5 bg-green-600 text-white font-semibold rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-[1.02] active:scale-[0.98]"
+                                    >
+                                        Ro'yxatdan o'tish
+                                    </button>
+                                )}
                             </form>
                         ) : (
-
-                            
-                            /* SMS kod kiritish */
                             <div className="space-y-6">
                                 <div className="flex items-center justify-between mb-2">
                                     <button onClick={handleBackToPhone} className="flex items-center gap-2 text-gray-600 hover:text-gray-900 transition-colors p-2 -ml-2">
@@ -315,7 +339,6 @@ const Login = () => {
                                         <p className="text-xs text-gray-500">Kod yuborildi</p>
                                     </div>
                                 </div>
-
 
                                 <div className="space-y-3">
                                     <label className="block text-sm font-semibold text-gray-700 text-center">6 raqamli kod</label>
