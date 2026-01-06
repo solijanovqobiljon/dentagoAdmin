@@ -6,7 +6,7 @@ import { Phone, ArrowLeft, CheckCircle, XCircle } from 'lucide-react';
 import DentaGo from "../assets/dentago.png";
 
 const Login = () => {
-    const { loginWithPhone } = useData();
+    const { loginWithPhone } = useData(); // Agar contextda updateUser funksiyasi bo'lsa, keyinroq qo'shamiz
     const navigate = useNavigate();
 
     const { handleSubmit, setValue } = useForm();
@@ -33,17 +33,10 @@ const Login = () => {
                 formattedPhone = '+' + formattedPhone;
             }
 
-            // Telefon raqamini to'g'ri formatda ko'rsatish
             const formatted = formatPhoneNumber(formattedPhone);
             setPhoneNumber(formatted);
-
-            // Darhol SMS kod kiritish bosqichiga o'tish
             setIsSmsStep(true);
-
-            // Belgini o'chirish (bir marta ishlatiladi)
             localStorage.removeItem('justRegistered');
-
-            // Avtomatik SMS jo'natish
             sendSmsCode();
         }
     }, []);
@@ -88,11 +81,9 @@ const Login = () => {
             const data = await response.json();
 
             if (response.ok && data.success) {
-                // SMS muvaffaqiyatli jo'natildi
                 setCountdown(60);
                 setIsSmsStep(true);
 
-                // 60 soniya countdown
                 const timer = setInterval(() => {
                     setCountdown(prev => {
                         if (prev <= 1) {
@@ -103,7 +94,6 @@ const Login = () => {
                     });
                 }, 1000);
             } else {
-                // Raqam topilmadi → ro'yxatdan o'tish
                 if (data.message && (
                     data.message.toLowerCase().includes('not found') ||
                     data.message.includes('mavjud emas') ||
@@ -170,57 +160,100 @@ const Login = () => {
 
     const handleSmsConfirm = async (code) => {
         if (code.length !== 6) return;
-
+    
         setIsLoading(true);
         setError('');
         setInputBorderState('default');
-
+    
         const cleanPhone = phoneNumber.replace(/\D/g, '');
         const fullPhone = `+${cleanPhone}`;
-
+    
         try {
-            const response = await fetch('https://app.dentago.uz/api/auth/app/verify', {
+            // 1. SMS kodini tasdiqlash
+            const verifyResponse = await fetch('https://app.dentago.uz/api/auth/app/verify', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ phone: fullPhone, otp: code }),
             });
-
-            const data = await response.json();
-
-            if (response.ok && data.success) {
-                setInputBorderState('success');
-
-                localStorage.setItem('accessToken', data.tokens.accessToken);
-                localStorage.setItem('refreshToken', data.tokens.refreshToken);
-                localStorage.setItem('userPhone', fullPhone);
-
-                loginWithPhone(fullPhone);
-
-                // Bosh sahifaga o'tish
-                setTimeout(() => navigate('/dashboard'), 800);
-            } else {
-                setInputBorderState('error');
-                setError(data.message || 'Kod notoʻgʻri yoki muddati oʻtgan');
-                setSmsCode('');
-                inputsRef.current.forEach(input => input && (input.value = ''));
-                inputsRef.current[0]?.focus();
+    
+            const verifyData = await verifyResponse.json();
+    
+            if (!verifyResponse.ok || !verifyData.success) {
+                throw new Error(verifyData.message || 'Kod noto‘g‘ri');
             }
+    
+            // Tokenlarni saqlash
+            localStorage.setItem('accessToken', verifyData.tokens.accessToken);
+            localStorage.setItem('refreshToken', verifyData.tokens.refreshToken);
+            localStorage.setItem('userPhone', fullPhone);
+    
+            console.log('✅ Verify muvaffaqiyatli, tokenlar saqlandi');
+    
+            // 2. /api/auth/me dan foydalanuvchi ma'lumotlarini olish
+            let username = fullPhone.replace('+998', '9'); // fallback – telefon raqami
+            let userRole = 'OPERATOR';
+    
+            try {
+                const meResponse = await fetch('https://app.dentago.uz/api/auth/me', {
+                    headers: {
+                        'Authorization': `Bearer ${verifyData.tokens.accessToken}`
+                    }
+                });
+    
+                console.log('meResponse status:', meResponse.status);
+    
+                if (meResponse.ok) {
+                    const meData = await meResponse.json();
+                    console.log('meData:', meData);
+    
+                    if (meData.user && meData.user.username) {
+                        username = meData.user.username.trim();
+                        userRole = 'OPERATOR'; // backendda "user" bo'lsa ham biz "OPERATOR" qilamiz
+                        console.log('✅ Username olindi:', username);
+                    } else {
+                        console.warn('meData.user yoki username yo‘q');
+                    }
+                } else {
+                    console.warn('meResponse OK emas:', meResponse.status);
+                }
+            } catch (meErr) {
+                console.error('api/auth/me so‘rovida xato:', meErr);
+            }
+    
+            // 3. Header uchun to‘g‘ri formatda saqlash
+            const userForApp = {
+                name: username,
+                role: userRole
+            };
+    
+            localStorage.setItem('userData', JSON.stringify(userForApp));
+            console.log('✅ userData saqlandi:', userForApp);
+    
+            // Contextni yangilash
+            loginWithPhone(fullPhone, userForApp);
+    
+            setInputBorderState('success');
+            setTimeout(() => navigate('/dashboard'), 800);
+    
         } catch (err) {
             setInputBorderState('error');
-            setError('Tasdiqlashda xato yuz berdi');
+            setError(err.message || 'Tasdiqlashda xato yuz berdi');
+            console.error('handleSmsConfirm xatosi:', err);
+    
             setSmsCode('');
             inputsRef.current.forEach(input => input && (input.value = ''));
+            inputsRef.current[0]?.focus();
         } finally {
             setIsLoading(false);
         }
     };
-
     const getBorderClass = () => {
         if (inputBorderState === 'success') return 'border-green-500 bg-green-50';
         if (inputBorderState === 'error') return 'border-red-500 bg-red-50';
         return 'border-gray-200 focus:border-blue-500';
     };
 
+    // Qolgan UI qismi o'zgarmadi
     return (
         <>
             {isLoading && (

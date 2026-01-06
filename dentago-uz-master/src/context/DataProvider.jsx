@@ -171,16 +171,7 @@ const initialData = {
             materials: []
         },
     ],
-    user: {
-        id: "133",
-        name: "Abduxalim",
-        surname: "To'xtayev",
-        role: "Sotuvchi",
-        login: "test_admin",
-        image: null,
-        createdAt: "11.09.2025 21:12",
-        updatedAt: "26.09.2025 16:40"
-    }
+    user: null  // <<< Muhim: Boshida null qilamiz, chunki real user login orqali keladi
 };
 
 const DataContext = createContext();
@@ -191,31 +182,70 @@ export const DataProvider = ({ children }) => {
     const [locale, setLocale] = useState(localStorage.getItem('app_locale') || 'uz');
     const [theme, setTheme] = useState(localStorage.getItem('app_theme') || 'light');
     const [isAuthenticated, setIsAuthenticated] = useState(false);
-    const [authLoaded, setAuthLoaded] = useState(false);  // Yangi loading holati
+    const [authLoaded, setAuthLoaded] = useState(false);
 
-    // Ilova ochilganda tokenlarni tekshirish
+    const [data, setData] = useState(() => {
+        // localStorage'dan umumiy ma'lumotlarni o'qish
+        const saved = localStorage.getItem('clinic_app_data');
+        if (saved) {
+            try {
+                const parsed = JSON.parse(saved);
+                return {
+                    ...initialData,
+                    ...parsed,
+                    user: parsed.user || null
+                };
+            } catch (e) {
+                console.error('Maʼlumotlar oʻqishda xato:', e);
+            }
+        }
+        return initialData;
+    });
+
+    // === YANGI: Sahifa ochilganda user ma'lumotlarini yuklash ===
     useEffect(() => {
         const accessToken = localStorage.getItem('accessToken');
         const savedPhone = localStorage.getItem('userPhone');
+        const savedUser = localStorage.getItem('userData');
 
         if (accessToken && savedPhone) {
             setIsAuthenticated(true);
+
+            // Agar localStorage'da user ma'lumotlari bo'lsa – kontekstga yuklaymiz
+            if (savedUser) {
+                try {
+                    const userObj = JSON.parse(savedUser);
+                    setData(prev => ({ ...prev, user: userObj }));
+                } catch (e) {
+                    console.error("userData parse xatosi:", e);
+                }
+            }
         }
-        setAuthLoaded(true);  // Tekshiruv tugadi
+
+        setAuthLoaded(true);
     }, []);
 
-    // Telefon bilan login
-    const loginWithPhone = (phone) => {
+    // === YANGI: loginWithPhone – endi user obyekti qabul qiladi ===
+    const loginWithPhone = (phone, userObj = null) => {
         localStorage.setItem('userPhone', phone);
         setIsAuthenticated(true);
+
+        if (userObj) {
+            // Kontekstga va localStorage'ga saqlaymiz
+            setData(prev => ({ ...prev, user: userObj }));
+            localStorage.setItem('userData', JSON.stringify(userObj));
+        }
     };
 
-    // Logout — tozalash
+    // === Logout – to'liq tozalash ===
     const logout = () => {
         localStorage.removeItem('accessToken');
         localStorage.removeItem('refreshToken');
         localStorage.removeItem('userPhone');
+        localStorage.removeItem('userData'); // <<< Muhim!
+
         setIsAuthenticated(false);
+        setData(prev => ({ ...prev, user: null })); // Kontekstdan ham o'chiramiz
     };
 
     const t = (key) => translations[locale][key] || key;
@@ -229,39 +259,24 @@ export const DataProvider = ({ children }) => {
         document.documentElement.classList.toggle('dark', theme === 'dark');
     }, [theme]);
 
+    useEffect(() => {
+        // Umumiy ma'lumotlarni saqlash (user bundan tashqari alohida boshqariladi)
+        localStorage.setItem('clinic_app_data', JSON.stringify({
+            ...data,
+            user: null // user ni bu yerga saqlamaymiz, chunki u alohida localStorage'da
+        }));
+    }, [data]);
+
     const switchLocale = (newLocale) => setLocale(newLocale);
     const switchTheme = (newTheme) => setTheme(newTheme);
 
-    const [data, setData] = useState(() => {
-        const saved = localStorage.getItem('clinic_app_data');
-        if (saved) {
-            try {
-                const parsed = JSON.parse(saved);
-                if (!parsed.user || Array.isArray(parsed.user)) {
-                    parsed.user = initialData.user;
-                }
-                return parsed;
-            } catch (e) {
-                console.error('Maʼlumotlar oʻqishda xato:', e);
-                return initialData;
-            }
-        }
-        return initialData;
-    });
-
-    useEffect(() => {
-        localStorage.setItem('clinic_app_data', JSON.stringify(data));
-    }, [data]);
-
-    // updateData funksiyasi
+    // updateData funksiyasi (hozircha o'zgartirmaymiz)
     const updateData = (type, item, action = 'ADD') => {
         setData(prev => {
-            // Bu yerda kerakli logikani yozasiz
             return { ...prev };
         });
     };
 
-    // Auth yuklanmaguncha children ni render qilmaydi
     if (!authLoaded) {
         return <div className="flex h-screen items-center justify-center">Yuklanmoqda...</div>;
     }

@@ -22,13 +22,11 @@ function AddMahsulot() {
   });
   const [savingEdit, setSavingEdit] = useState(false);
   const [notification, setNotification] = useState({ show: false, message: '', type: 'success' });
-  
-  const navigate = useNavigate();
-  
-  const BASE_URL = "https://app.dentago.uz";
-  const TOKEN = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjY4YzNmMDdjNzIxZmZkMjg0MGY3ZjYwYSIsImxvZ2luIjoiKzk5ODg4MDgzNjU1NiIsInVzZXJuYW1lIjoiU3VubmF0aWxsbyIsInJvbGUiOiJ1c2VyIiwiaWF0IjoxNzY3MDEwMTg4LCJleHAiOjE3Njc2MTQ5ODgsImF1ZCI6InlvdXItYXBwLXVzZXJzLU42Z3V6IiwiaXNzIjoieW91ci1hcHAtbmFtZS0yaURBRnZ3NyJ9.fG7Ej9MywUT3UaoRKHiw7PIfHpYb0_hvFv1EFCYcuvs";
 
-  // Mahsulotlarni yuklash
+  const navigate = useNavigate();
+
+  const BASE_URL = "https://app.dentago.uz";
+  const TOKEN = localStorage.getItem('accessToken');
   useEffect(() => {
     fetchProducts();
   }, []);
@@ -57,16 +55,16 @@ function AddMahsulot() {
       const response = await axios.get(`${BASE_URL}/api/product`, {
         headers: { Authorization: `Bearer ${TOKEN}` }
       });
-      
+
       console.log("API javobi:", response.data);
-      
+
       let productsData = [];
       if (response.data && response.data.data) {
         productsData = response.data.data;
       } else if (Array.isArray(response.data)) {
         productsData = response.data;
       }
-      
+
       setProducts(productsData);
       setSearchResults(productsData);
       setError(null);
@@ -91,10 +89,10 @@ function AddMahsulot() {
       const categoryMatch = product.category?.toLowerCase().includes(term) || false;
       const descriptionMatch = product.description?.toLowerCase().includes(term) || false;
       const priceMatch = product.price?.toString().includes(term) || false;
-      
+
       return nameMatch || categoryMatch || descriptionMatch || priceMatch;
     });
-    
+
     setSearchResults(results);
   };
 
@@ -136,14 +134,14 @@ function AddMahsulot() {
       showNotification("Mahsulot ID topilmadi!", 'error');
       return;
     }
-    
+
     if (!editForm.name.trim() || !editForm.price) {
       showNotification("Nomi va narxi maydonlari to'ldirilishi shart!", 'error');
       return;
     }
-    
+
     setSavingEdit(true);
-    
+
     const payload = {
       name: editForm.name.trim(),
       price: Number(editForm.price),
@@ -151,18 +149,18 @@ function AddMahsulot() {
       discount: Number(editForm.discount || 0),
       description: editForm.description.trim()
     };
-    
+
     try {
       // Avval PUT metodini sinab ko'ramiz
       let response;
       let methodUsed = 'PUT';
-      
+
       try {
         response = await axios.put(
           `${BASE_URL}/api/product/${editingProduct._id}`,
           payload,
           {
-            headers: { 
+            headers: {
               'Authorization': `Bearer ${TOKEN}`,
               'Content-Type': 'application/json'
             }
@@ -176,7 +174,7 @@ function AddMahsulot() {
             `${BASE_URL}/api/product/${editingProduct._id}`,
             payload,
             {
-              headers: { 
+              headers: {
                 'Authorization': `Bearer ${TOKEN}`,
                 'Content-Type': 'application/json'
               }
@@ -189,7 +187,7 @@ function AddMahsulot() {
             `${BASE_URL}/api/product/${editingProduct._id}`,
             payload,
             {
-              headers: { 
+              headers: {
                 'Authorization': `Bearer ${TOKEN}`,
                 'Content-Type': 'application/json'
               }
@@ -197,25 +195,25 @@ function AddMahsulot() {
           );
         }
       }
-      
+
       console.log(`${methodUsed} metodidan javob:`, response.data);
-      
+
       // Mahsulotlar ro'yxatini yangilash
-      const updatedProducts = products.map(p => 
+      const updatedProducts = products.map(p =>
         p._id === editingProduct._id ? { ...p, ...payload } : p
       );
-      
+
       setProducts(updatedProducts);
       setSearchResults(updatedProducts);
-      
+
       showNotification("Mahsulot muvaffaqiyatli yangilandi!");
       setEditModalOpen(false);
       setEditingProduct(null);
-      
+
     } catch (err) {
       console.error("Tahrirlashda xatolik:", err);
       let errorMsg = "Tahrirlashda xatolik yuz berdi";
-      
+
       if (err.response?.status === 401) {
         errorMsg = "Token noto'g'ri yoki muddati tugagan";
       } else if (err.response?.status === 404) {
@@ -223,7 +221,7 @@ function AddMahsulot() {
       } else if (err.response?.data?.message) {
         errorMsg = err.response.data.message;
       }
-      
+
       showNotification(`Xatolik: ${errorMsg}`, 'error');
     } finally {
       setSavingEdit(false);
@@ -239,7 +237,7 @@ function AddMahsulot() {
   // O'chirishni amalga oshirish
   const handleConfirmDelete = async () => {
     if (!productToDelete?._id) return;
-    
+
     try {
       await axios.delete(
         `${BASE_URL}/api/product/${productToDelete._id}`,
@@ -247,23 +245,23 @@ function AddMahsulot() {
           headers: { Authorization: `Bearer ${TOKEN}` }
         }
       );
-      
+
       // Ikki ro'yxatdan ham o'chirish
       const updatedProducts = products.filter(p => p._id !== productToDelete._id);
       setProducts(updatedProducts);
       setSearchResults(updatedProducts);
-      
+
       showNotification("Mahsulot muvaffaqiyatli o'chirildi!");
     } catch (err) {
       console.error("O'chirish xatosi:", err);
       let errorMsg = "O'chirishda xatolik yuz berdi";
-      
+
       if (err.response?.status === 404) {
         errorMsg = "Mahsulot topilmadi";
       } else if (err.response?.data?.message) {
         errorMsg = err.response.data.message;
       }
-      
+
       showNotification(`Xatolik: ${errorMsg}`, 'error');
     } finally {
       setDeleteConfirmOpen(false);
@@ -275,7 +273,7 @@ function AddMahsulot() {
   const handleAddProduct = () => {
     navigate("/MahsulotQoshish");
   };
- 
+
 
   if (loading) {
     return (
@@ -291,24 +289,24 @@ function AddMahsulot() {
     <>
       <div className="p-6 bg-gray-50 min-h-screen">
         <div className="max-w-7xl mx-auto">
-          
+
           {/* Header qismi */}
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
             <div>
               <h1 className="text-2xl font-bold text-gray-800">Mahsulotlar Ombori</h1>
               <p className="text-gray-500 text-sm">
-                {searchTerm 
-                  ? `"${searchTerm}" uchun ${searchResults.length} ta natija` 
+                {searchTerm
+                  ? `"${searchTerm}" uchun ${searchResults.length} ta natija`
                   : `Jami ${products.length} ta mahsulot`}
               </p>
             </div>
-            
+
             <div className="flex items-center gap-3">
               {/* QIDIRUV INPUTI */}
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-5 h-5" />
-                <input 
-                  type="text" 
+                <input
+                  type="text"
                   placeholder="Nomi, kategoriyasi bo'yicha qidirish..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
@@ -325,7 +323,7 @@ function AddMahsulot() {
                   </button>
                 )}
               </div>
-              
+
               <button
                 onClick={handleAddProduct}
                 className="flex items-center gap-2 bg-[#00BCE4] hover:bg-[#00a6c9] text-white px-5 py-3 rounded-xl font-semibold transition-colors shadow-lg"
@@ -390,8 +388,8 @@ function AddMahsulot() {
                           <div className="flex items-center gap-4">
                             <div className="w-16 h-16 rounded-xl bg-gray-100 overflow-hidden border">
                               {product.imageUrl?.[0] ? (
-                                <img 
-                                  src={`${BASE_URL}/images/${product.imageUrl[0]}`} 
+                                <img
+                                  src={`${BASE_URL}/images/${product.imageUrl[0]}`}
                                   alt={product.name}
                                   className="w-full h-full object-cover"
                                 />
@@ -434,7 +432,7 @@ function AddMahsulot() {
                         </td>
                         <td className="px-6 py-4">
                           <div className="flex items-center justify-center gap-2">
-                           
+
                             <button
                               onClick={() => handleEditClick(product)}
                               className="p-2 text-gray-500 hover:text-amber-600 hover:bg-amber-50 rounded-lg transition-colors"
@@ -493,7 +491,7 @@ function AddMahsulot() {
                 </button>
               </div>
             </div>
-            
+
             <div className="p-6 space-y-4 max-h-[60vh] overflow-y-auto">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -509,7 +507,7 @@ function AddMahsulot() {
                   placeholder="Mahsulot nomini kiriting"
                 />
               </div>
-              
+
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -526,7 +524,7 @@ function AddMahsulot() {
                     placeholder="0"
                   />
                 </div>
-                
+
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Chegirma (%)
@@ -543,7 +541,7 @@ function AddMahsulot() {
                   />
                 </div>
               </div>
-              
+
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Kategoriya
@@ -562,7 +560,7 @@ function AddMahsulot() {
                   <option value="Fayllar">Fayllar</option>
                 </select>
               </div>
-              
+
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Tavsif
@@ -577,7 +575,7 @@ function AddMahsulot() {
                 />
               </div>
             </div>
-            
+
             <div className="p-6 border-t flex justify-end gap-3">
               <button
                 onClick={() => setEditModalOpen(false)}
@@ -620,7 +618,7 @@ function AddMahsulot() {
                 </button>
               </div>
             </div>
-            
+
             <div className="p-6">
               <div className="flex items-center gap-4 mb-4">
                 <div className="w-12 h-12 rounded-lg bg-red-100 flex items-center justify-center">
@@ -631,7 +629,7 @@ function AddMahsulot() {
                   <p className="text-sm text-gray-500">ID: {productToDelete._id?.slice(-6)}</p>
                 </div>
               </div>
-              
+
               <p className="text-gray-600 mb-2">
                 Ushbu mahsulotni rostdan ham o'chirmoqchimisiz?
               </p>
@@ -639,7 +637,7 @@ function AddMahsulot() {
                 Bu amalni qaytarib bo'lmaydi. Barcha ma'lumotlar butunlay o'chiriladi.
               </p>
             </div>
-            
+
             <div className="p-6 border-t flex justify-end gap-3">
               <button
                 onClick={() => setDeleteConfirmOpen(false)}

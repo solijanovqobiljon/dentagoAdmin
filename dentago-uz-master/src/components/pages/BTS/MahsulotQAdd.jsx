@@ -5,9 +5,9 @@ import axios from 'axios';
 
 function ProductForm({ productToEdit }) {
   const navigate = useNavigate();
-  
+
   // Tokenni localStoragedan olish
-  const token  = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjY5NWI1NDMzMzk1OTgyYWU1ZWE1ODA5MyIsImxvZ2luIjoiKzk5ODkzMjMwNDYzNyIsInVzZXJuYW1lIjoiUW9iaWxqb24gU29saWphbm92Iiwicm9sZSI6InVzZXIiLCJpYXQiOjE3Njc2MTUwMzUsImV4cCI6MTc2ODIxOTgzNSwiYXVkIjoieW91ci1hcHAtdXNlcnMtTjZndXoiLCJpc3MiOiJ5b3VyLWFwcC1uYW1lLTJpREFGdnc3In0.S7okwzGuM95mhJS3-e2URI50yBUjVx1wvg9SeTw_HeE";
+  const token = localStorage.getItem('accessToken');
 
   const [categories, setCategories] = useState([]);
   const [codeOptions, setCodeOptions] = useState([
@@ -74,18 +74,18 @@ function ProductForm({ productToEdit }) {
         ...productToEdit,
         imageUrl: productToEdit.imageUrl || []
       };
-      
+
       // Raqamli maydonlarni stringga o'tkazish
       Object.keys(editData).forEach(key => {
         if (typeof editData[key] === 'number') {
           editData[key] = editData[key].toString();
         }
       });
-      
+
       setFormData(editData);
-      
+
       if (productToEdit.imageUrl && productToEdit.imageUrl.length > 0) {
-        setPreviewImages(productToEdit.imageUrl.map(img => 
+        setPreviewImages(productToEdit.imageUrl.map(img =>
           `https://app.dentago.uz/images/${img}`
         ));
       }
@@ -95,18 +95,18 @@ function ProductForm({ productToEdit }) {
   const handleChange = (e) => {
     const { name, value } = e.target;
     const numericFields = ['price', 'salePercentage', 'vat_percent', 'quantity', 'deliveryDays'];
-    
+
     setFormData((prevData) => ({
       ...prevData,
-      [name]: numericFields.includes(name) ? 
-        (value === '' ? '' : parseFloat(value) || 0) : 
+      [name]: numericFields.includes(name) ?
+        (value === '' ? '' : parseFloat(value) || 0) :
         value,
     }));
   };
 
   const handleFileChange = (e) => {
     const files = Array.from(e.target.files);
-    
+
     if (files.length === 0) return;
 
     const validFiles = files.filter(file => file.type.startsWith('image/'));
@@ -121,7 +121,7 @@ function ProductForm({ productToEdit }) {
     }
 
     setSelectedFiles(prev => [...prev, ...validFiles]);
-    
+
     const newPreviews = validFiles.map(file => URL.createObjectURL(file));
     setPreviewImages(prev => [...prev, ...newPreviews]);
     setErrorMessage('');
@@ -129,7 +129,7 @@ function ProductForm({ productToEdit }) {
 
   const removeImage = (index) => {
     const isOldImage = productToEdit && index < (productToEdit.imageUrl?.length || 0);
-    
+
     if (isOldImage) {
       const newImageUrls = [...formData.imageUrl];
       newImageUrls.splice(index, 1);
@@ -138,7 +138,7 @@ function ProductForm({ productToEdit }) {
       const fileIndex = index - (productToEdit?.imageUrl?.length || 0);
       setSelectedFiles(prev => prev.filter((_, i) => i !== fileIndex));
     }
-    
+
     setPreviewImages(prev => {
       const newPreviews = [...prev];
       URL.revokeObjectURL(newPreviews[index]);
@@ -160,8 +160,8 @@ function ProductForm({ productToEdit }) {
         formDataImage.append('image', file);
 
         const response = await axios.post(
-          'https://app.dentago.uz/api/upload/image', 
-          formDataImage, 
+          'https://app.dentago.uz/api/upload/image',
+          formDataImage,
           {
             headers: {
               'Content-Type': 'multipart/form-data',
@@ -169,7 +169,7 @@ function ProductForm({ productToEdit }) {
             },
           }
         );
-        
+
         if (response.data && response.data.file && response.data.file.savedName) {
           uploadedFilenames.push(response.data.file.savedName);
         } else if (response.data && response.data.filename) {
@@ -181,7 +181,7 @@ function ProductForm({ productToEdit }) {
         }
       }
       return [...(formData.imageUrl || []), ...uploadedFilenames];
-      
+
     } catch (error) {
       console.error("Rasm yuklanmadi:", error);
       if (error.response?.status === 401) {
@@ -217,8 +217,8 @@ function ProductForm({ productToEdit }) {
       return false;
     }
 
-    if (formData.salePercentage && 
-        (Number(formData.salePercentage) < 0 || Number(formData.salePercentage) > 100)) {
+    if (formData.salePercentage &&
+      (Number(formData.salePercentage) < 0 || Number(formData.salePercentage) > 100)) {
       setErrorMessage("Chegirma foizi 0 dan 100 gacha bo'lishi kerak");
       return false;
     }
@@ -233,7 +233,7 @@ function ProductForm({ productToEdit }) {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
+
     if (!validateForm()) {
       return;
     }
@@ -283,20 +283,20 @@ function ProductForm({ productToEdit }) {
       if (productToEdit) {
         const productId = productToEdit._id;
         response = await axios.put(
-          `https://app.dentago.uz/api/product/${productId}`, 
-          dataToSend, 
+          `https://app.dentago.uz/api/product/${productId}`,
+          dataToSend,
           config
         );
         setSuccessMessage('Mahsulot muvaffaqiyatli yangilandi!');
         setTimeout(() => navigate('/dashboard'), 2000);
       } else {
         response = await axios.post(
-          'https://app.dentago.uz/api/product', 
-          dataToSend, 
+          'https://app.dentago.uz/api/product',
+          dataToSend,
           config
         );
         setSuccessMessage('Mahsulot muvaffaqiyatli qo\'shildi!');
-        
+
         setFormData({
           name: '',
           sku: '',
@@ -324,13 +324,13 @@ function ProductForm({ productToEdit }) {
 
     } catch (error) {
       console.error("Ma'lumot yuborishda xato:", error);
-      
+
       let errorMsg = 'Xatolik yuz berdi. Qayta urinib ko\'ring.';
-      
+
       if (error.response) {
         console.error("Status:", error.response.status);
         console.error("Data:", error.response.data);
-        
+
         if (error.response.status === 401) {
           errorMsg = 'Kirish rad etildi. Token eskirgan yoki noto\'g\'ri.';
         } else if (error.response.status === 400) {
@@ -340,18 +340,18 @@ function ProductForm({ productToEdit }) {
         } else if (error.response.status === 500) {
           errorMsg = 'Server xatosi. Iltimos, keyinroq urinib ko\'ring.';
         } else {
-          errorMsg = error.response.data?.message || 
-                     error.response.data?.error || 
-                     `Server xatosi: ${error.response.status}`;
+          errorMsg = error.response.data?.message ||
+            error.response.data?.error ||
+            `Server xatosi: ${error.response.status}`;
         }
       } else if (error.request) {
         errorMsg = 'Serverga ulanib bo\'lmadi. Internet aloqasini tekshiring.';
       } else {
         errorMsg = error.message || 'Noma\'lum xatolik';
       }
-      
+
       setErrorMessage(errorMsg);
-      
+
     } finally {
       setLoading(false);
     }
@@ -378,8 +378,8 @@ function ProductForm({ productToEdit }) {
             <div className="bg-blue-50 border-l-4 border-blue-500 text-blue-700 p-4 mb-6 rounded-md flex items-center gap-2">
               <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-700"></div>
               <p>
-                {uploadingImages 
-                  ? `Rasmlar yuklanmoqda... (${selectedFiles.length} ta)` 
+                {uploadingImages
+                  ? `Rasmlar yuklanmoqda... (${selectedFiles.length} ta)`
                   : "Saqlanmoqda..."}
               </p>
             </div>
@@ -485,7 +485,7 @@ function ProductForm({ productToEdit }) {
                   {selectedFiles.length > 0 ? `${selectedFiles.length} ta fayl tanlandi` : 'Fayl tanlanmadi'}
                 </span>
               </div>
-              
+
               {previewImages.length > 0 && (
                 <div className="mt-4">
                   <p className="text-sm font-medium text-gray-700 mb-2">Олдиндан кўриш:</p>
@@ -660,10 +660,10 @@ function ProductForm({ productToEdit }) {
                 {loading
                   ? 'Юкланмоқда...'
                   : uploadingImages
-                  ? 'Rasmlar yuklanmoqda...'
-                  : productToEdit
-                  ? 'Ўзгаришларни сақлаш'
-                  : 'Товарни сақлаш'}
+                    ? 'Rasmlar yuklanmoqda...'
+                    : productToEdit
+                      ? 'Ўзгаришларни сақлаш'
+                      : 'Товарни сақлаш'}
               </button>
             </div>
           </form>

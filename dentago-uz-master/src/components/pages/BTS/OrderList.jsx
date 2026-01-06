@@ -23,10 +23,8 @@ function Aperator() {
       setLoading(true);
       setError(null);
 
-      const token = localStorage.getItem('accessToken') || 
-                    localStorage.getItem('token') || 
-                    localStorage.getItem('authToken') || 
-                    localStorage.getItem('jwt');
+                  
+      const token = localStorage.getItem('accessToken');
 
       if (!token) {
         throw new Error("Token topilmadi! Tizimga qayta kiring.");

@@ -61,7 +61,7 @@ const SmsSettingsContent = () => {
                                             <div className="w-10 h-10 bg-blue-50 rounded-2xl flex items-center justify-center text-[#00BCE4] group-hover:bg-white transition-colors">
                                                 <Building2 size={18} />
                                             </div>
-                                            <span className="text-sm font-black text-slate-800 uppercase tracking-tighter">{setting.clinicName}</span>
+                                            <span className="text-sm font-bold text-slate-800 uppercase tracking-tighter">{setting.clinicName}</span>
                                         </div>
                                     </td>
                                     <td className="px-8 py-8">

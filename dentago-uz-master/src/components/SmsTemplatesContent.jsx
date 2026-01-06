@@ -80,7 +80,7 @@ const SmsTemplatesContent = () => {
                                                 <div className="p-2 bg-blue-50 rounded-xl text-[#00BCE4] group-hover:bg-white transition-colors">
                                                     <MessageSquare size={16} />
                                                 </div>
-                                                <span className="text-sm font-black text-slate-800 uppercase tracking-tighter">{template.name}</span>
+                                                <span className="text-[13px] font-bold text-slate-800 uppercase tracking-tighter">{template.name}</span>
                                             </div>
                                         </td>
                                         <td className="px-8 py-6">

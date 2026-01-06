@@ -64,7 +64,46 @@ const Header = ({ setIsSidebarOpen, isSidebarOpen, currentPage }) => {
         logout
     } = useData();
 
-    const user = data.user || { name: 'Admin', role: 'Sotuvchi' };
+    // Foydalanuvchi ma'lumotlari
+    const getCurrentUser = () => {
+        const stored = localStorage.getItem('userData');
+        if (stored) {
+            try {
+                const parsed = JSON.parse(stored);
+                return {
+                    username: parsed.name || parsed.username || 'Foydalanuvchi',
+                    role: parsed.role === 'user' ? 'OPERATOR' : (parsed.role || 'OPERATOR').toUpperCase()
+                };
+            } catch (e) {
+                console.error("userData parse xatosi:", e);
+            }
+        }
+
+        if (data.user) {
+            return {
+                username: data.user.username || data.user.name || 'Foydalanuvchi',
+                role: data.user.role === 'user' ? 'OPERATOR' : (data.user.role || 'OPERATOR').toUpperCase()
+            };
+        }
+
+        const phone = localStorage.getItem('userPhone') || '';
+        const formattedPhone = phone ? phone.replace('+998', '9') : 'Foydalanuvchi';
+
+        return {
+            username: formattedPhone,
+            role: 'OPERATOR'
+        };
+    };
+
+    const user = getCurrentUser();
+
+    const getInitial = () => {
+        if (user.username && user.username.trim()) {
+            const firstChar = user.username.trim().charAt(0).toUpperCase();
+            return isNaN(firstChar) ? firstChar : firstChar;
+        }
+        return 'U';
+    };
 
     const [isLocaleMenuOpen, setIsLocaleMenuOpen] = useState(false);
     const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
@@ -78,6 +117,10 @@ const Header = ({ setIsSidebarOpen, isSidebarOpen, currentPage }) => {
 
     const handleConfirmLogout = () => {
         logout();
+        localStorage.removeItem('userData');
+        localStorage.removeItem('userPhone');
+        localStorage.removeItem('accessToken');
+        localStorage.removeItem('refreshToken');
         setIsLogoutModalOpen(false);
         navigate('/login');
     };
@@ -98,32 +141,33 @@ const Header = ({ setIsSidebarOpen, isSidebarOpen, currentPage }) => {
     const getFlag = (loc) => {
         const flagClass = "w-5 h-3.5 object-cover rounded-sm shadow-sm";
         switch (loc) {
-            case 'uz': return <UZ title="Uzbek" className={flagClass} />;
+            case 'uz': return <UZ title="O'zbek" className={flagClass} />;
             case 'en': return <US title="English" className={flagClass} />;
-            case 'ru': return <RU title="Russian" className={flagClass} />;
+            case 'ru': return <RU title="Русский" className={flagClass} />;
             default: return null;
         }
     };
 
     return (
         <header className="flex items-center justify-between px-3 sm:px-6 py-3 bg-white border-b border-blue-100 shadow-sm sticky top-0 z-40">
-
-            {/* Chap qism: Menu va Sarlavha */}
+            {/* Chap qism: Menu tugmasi va Sarlavha */}
             <div className="flex items-center gap-2 sm:gap-4">
+                {/* MOBIL MENU TUGMASI – BU YERDA TO'G'RI ISHLAYDI */}
                 <button
-                    onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+                    onClick={() => setIsSidebarOpen(prev => !prev)} // Muhim: to'g'ri toggle
                     className="p-2.5 text-slate-600 rounded-xl hover:bg-blue-50 active:scale-95 transition-all lg:hidden"
+                    aria-label="Sidebar ochish/yopish"
                 >
-                    <Menu className="w-5 h-5 sm:w-6 sm:h-6" />
+                    <Menu className="w-6 h-6" />
                 </button>
+
                 <h1 className="text-lg sm:text-2xl font-bold text-[#00BCE4] tracking-tight">
                     {currentPage}
                 </h1>
             </div>
 
-            {/* O'ng qism: Amallar */}
+            {/* O'ng qism: Ikonkalar */}
             <div className="flex items-center gap-1 sm:gap-3">
-
                 {/* Qidiruv */}
                 <button
                     onClick={() => setIsSearchOpen(true)}
@@ -134,8 +178,8 @@ const Header = ({ setIsSidebarOpen, isSidebarOpen, currentPage }) => {
 
                 {/* Taqvim */}
                 <button
-                    className="p-2 text-slate-500 rounded-xl hover:bg-blue-50 transition-all hidden xs:flex"
                     onClick={() => navigate('/taqvim')}
+                    className="p-2 text-slate-500 rounded-xl hover:bg-blue-50 transition-all hidden xs:flex"
                 >
                     <Calendar className="w-5 h-5 hover:text-[#00BCE4]" />
                 </button>
@@ -157,13 +201,13 @@ const Header = ({ setIsSidebarOpen, isSidebarOpen, currentPage }) => {
                     >
                         {getFlag(locale)}
                         <span className="text-xs sm:text-sm font-bold hidden xs:inline uppercase">{locale}</span>
-                        <ChevronDown className={`w-3.5 h-3.5 transition-transform duration-300 ${isLocaleMenuOpen ? 'rotate-180' : ''}`} />
+                        <ChevronDown className={`w-3.5 h-3.5 transition-transform ${isLocaleMenuOpen ? 'rotate-180' : ''}`} />
                     </button>
 
                     {isLocaleMenuOpen && (
                         <>
                             <div className="fixed inset-0 z-10" onClick={() => setIsLocaleMenuOpen(false)}></div>
-                            <div className="absolute right-0 mt-2 w-36 bg-white rounded-2xl shadow-xl z-20 border border-blue-50 py-2 overflow-hidden animate-in slide-in-from-top-2">
+                            <div className="absolute right-0 mt-2 w-36 bg-white rounded-2xl shadow-xl z-20 border border-blue-50 py-2">
                                 {['uz', 'ru', 'en'].map(lang => (
                                     <button
                                         key={lang}
@@ -186,42 +230,37 @@ const Header = ({ setIsSidebarOpen, isSidebarOpen, currentPage }) => {
                         className="flex items-center gap-2 group outline-none"
                     >
                         <div className="w-8 h-8 sm:w-10 sm:h-10 bg-[#00BCE4] text-white flex items-center justify-center rounded-full text-sm font-black shadow-lg shadow-blue-200 group-hover:scale-105 transition-transform">
-                            {(user.name && user.name[0]) || 'A'}
+                            {getInitial()}
                         </div>
                         <div className="hidden lg:flex flex-col items-start text-left">
-                            <span className="text-sm font-bold text-slate-900 leading-tight group-hover:text-[#00BCE4] transition-colors">{user.name}</span>
-                            <span className="text-[10px] font-bold text-[#00BCE4] uppercase tracking-wider">{user.role}</span>
+                            <span className="text-sm font-bold text-slate-900 leading-tight group-hover:text-[#00BCE4]">
+                                {user.username}
+                            </span>
+                            <span className="text-[10px] font-bold text-[#00BCE4] uppercase tracking-wider">
+                                {user.role}
+                            </span>
                         </div>
-                        <ChevronDown className={`w-4 h-4 text-slate-400 transition-transform duration-300 ${isProfileMenuOpen ? 'rotate-180' : ''}`} />
+                        <ChevronDown className={`w-4 h-4 text-slate-400 transition-transform ${isProfileMenuOpen ? 'rotate-180' : ''}`} />
                     </button>
 
                     {isProfileMenuOpen && (
                         <>
                             <div className="fixed inset-0 z-10" onClick={() => setIsProfileMenuOpen(false)}></div>
-                            <div className="absolute right-0 top-full mt-3 w-64 bg-white rounded-2xl shadow-2xl z-20 border border-blue-50 py-3 overflow-hidden animate-in slide-in-from-top-2">
+                            <div className="absolute right-0 top-full mt-3 w-64 bg-white rounded-2xl shadow-2xl z-20 border border-blue-50 py-3">
                                 <div className="px-4 py-2 mb-2 border-b border-blue-50 lg:hidden">
-                                    <p className="text-sm font-bold text-slate-900">{user.name}</p>
+                                    <p className="text-sm font-bold text-slate-900">{user.username}</p>
                                     <p className="text-xs text-[#00BCE4] font-medium">{user.role}</p>
                                 </div>
 
-                                <button
-                                    onClick={() => { navigate('/profile'); setIsProfileMenuOpen(false); }}
-                                    className="flex items-center w-full px-4 py-3 text-sm text-slate-700 hover:bg-blue-50 hover:text-[#00BCE4] transition-all group"
-                                >
+                                <button onClick={() => { navigate('/profile'); setIsProfileMenuOpen(false); }} className="flex items-center w-full px-4 py-3 text-sm text-slate-700 hover:bg-blue-50 hover:text-[#00BCE4] group">
                                     <User className="w-4 h-4 mr-3 text-slate-400 group-hover:text-[#00BCE4]" />
                                     <span className="font-medium">{t('my_profile') || "Mening profilim"}</span>
                                 </button>
-                                <button
-                                    onClick={() => { navigate('/payments/app'); setIsProfileMenuOpen(false); }}
-                                    className="flex items-center w-full px-4 py-3 text-sm text-slate-700 hover:bg-blue-50 hover:text-[#00BCE4] transition-all group"
-                                >
+                                <button onClick={() => { navigate('/payments/app'); setIsProfileMenuOpen(false); }} className="flex items-center w-full px-4 py-3 text-sm text-slate-700 hover:bg-blue-50 hover:text-[#00BCE4] group">
                                     <CreditCard className="w-4 h-4 mr-3 text-slate-400 group-hover:text-[#00BCE4]" />
                                     <span className="font-medium">{t('app_payments') || "To'lovlar"}</span>
                                 </button>
-                                <button
-                                    onClick={() => { navigate('/payments/tariffs'); setIsProfileMenuOpen(false); }}
-                                    className="flex items-center w-full px-4 py-3 text-sm text-slate-700 hover:bg-blue-50 hover:text-[#00BCE4] transition-all group"
-                                >
+                                <button onClick={() => { navigate('/payments/tariffs'); setIsProfileMenuOpen(false); }} className="flex items-center w-full px-4 py-3 text-sm text-slate-700 hover:bg-blue-50 hover:text-[#00BCE4] group">
                                     <FileText className="w-4 h-4 mr-3 text-slate-400 group-hover:text-[#00BCE4]" />
                                     <span className="font-medium">{t('tariffs') || "Tariflar"}</span>
                                 </button>
@@ -230,7 +269,7 @@ const Header = ({ setIsSidebarOpen, isSidebarOpen, currentPage }) => {
 
                                 <button
                                     onClick={handleLogoutClick}
-                                    className="flex items-center w-full px-4 py-3 text-sm text-red-600 hover:bg-red-50 transition-all font-bold"
+                                    className="flex items-center w-full px-4 py-3 text-sm text-red-600 hover:bg-red-50 font-bold"
                                 >
                                     <LogOut className="w-4 h-4 mr-3" />
                                     {t('logout') || "Chiqish"}
@@ -243,7 +282,6 @@ const Header = ({ setIsSidebarOpen, isSidebarOpen, currentPage }) => {
 
             {/* Modallar */}
             <SearchModal isOpen={isSearchOpen} onClose={() => setIsSearchOpen(false)} />
-
             <LogoutConfirmationModal
                 isOpen={isLogoutModalOpen}
                 onClose={() => setIsLogoutModalOpen(false)}
