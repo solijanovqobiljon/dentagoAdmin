@@ -33,6 +33,8 @@ import Cards from './components/pages/BTS/cards';
 import Addproduct from './components/pages/addMahsulot';
 import MahsulotQoshish from './components/pages/BTS/MahsulotQAdd';
 
+
+
 // Auth
 import Login from './components/Login';
 import Registration from './components/registration';
